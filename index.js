@@ -61,13 +61,26 @@ async function fetchGintama() {
 }
 
 // 🧱 Build UI with ContainerBuilder
-function buildContainer() {
+function buildContainer(data) {
   return new ContainerBuilder()
     .setAccentColor(0xffcc00)
 
     .addTextDisplayComponents(
-      (t) => t.setContent("🎌 **Gintama Tracker**"),
-      (t) => t.setContent(`📺 Episode: **${gintamaEpisode}/${gintamaTotal}**`)
+      (t) => t.setContent("🎌 **Gintama Tracker**")
+    )
+
+    .addTextDisplayComponents(
+      (t) =>
+        t.setContent(
+          `📺 Episode: **${gintamaEpisode}/${gintamaTotal}**`
+        )
+    )
+
+    .addTextDisplayComponents(
+      (t) =>
+        t.setContent(
+          `📊 Watched Today: **${data.watchedToday} episode(s)**`
+        )
     )
 
     .addActionRowComponents((row) =>
@@ -93,10 +106,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.commandName === "panel") {
       await fetchGintama();
 
+      const data = updateWatchCounter(gintamaEpisode);
+
       await interaction.reply({
-        components: [buildContainer()],
+        components: [buildContainer(data)],
         flags: MessageFlags.IsComponentsV2
-        });
+      });
     }
   }
 
@@ -105,12 +120,58 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.customId === "refresh") {
       await fetchGintama();
 
+      const data = updateWatchCounter(gintamaEpisode);
+
       await interaction.update({
-        components: [buildContainer()],
+        components: [buildContainer(data)],
         flags: MessageFlags.IsComponentsV2
         });
     }
   }
 });
+
+// Date Function
+const fs = require("fs");
+
+const DATA_FILE = "./data.json";
+
+function loadData() {
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({
+      date: "",
+      lastEpisode: 0,
+      watchedToday: 0
+    }, null, 2));
+  }
+
+  return JSON.parse(fs.readFileSync(DATA_FILE));
+}
+
+function saveData(data) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+}
+
+function updateWatchCounter(newEpisode) {
+  const data = loadData();
+
+  const today = new Date().toISOString().split("T")[0];
+
+  // reset if new day
+  if (data.date !== today) {
+    data.date = today;
+    data.lastEpisode = newEpisode;
+    data.watchedToday = 0;
+  }
+
+  // calculate progress difference
+  if (newEpisode > data.lastEpisode) {
+    data.watchedToday += (newEpisode - data.lastEpisode);
+  }
+
+  data.lastEpisode = newEpisode;
+
+  saveData(data);
+  return data;
+}
 
 client.login(process.env.DISCORD_TOKEN);
