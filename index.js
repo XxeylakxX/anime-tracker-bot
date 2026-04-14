@@ -20,6 +20,17 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+  res.send("Bot is alive ✅");
+});
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Keep-alive server running");
+});
+
 let gintamaEpisode = 0;
 let gintamaTotal = "?";
 
