@@ -71,6 +71,21 @@ async function fetchGintama() {
   }
 }
 
+// RESET 
+function resetTodayCounter() {
+  const data = loadData();
+
+  const today = new Date().toISOString().split("T")[0];
+
+  data.date = today;
+  data.watchedToday = 0;
+
+  // DO NOT reset lastEpisode (important)
+  saveData(data);
+
+  return data;
+}
+
 // 🧱 Build UI with ContainerBuilder
 function buildContainer(data) {
   return new ContainerBuilder()
@@ -99,7 +114,12 @@ function buildContainer(data) {
         new ButtonBuilder()
           .setCustomId("refresh")
           .setLabel("🔄 Refresh")
-          .setStyle(ButtonStyle.Primary)
+          .setStyle(ButtonStyle.Primary),
+
+        new ButtonBuilder()
+          .setCustomId("reset_today")
+          .setLabel("🧹 Reset Today")
+          .setStyle(ButtonStyle.Danger)
       )
     );
 }
@@ -112,7 +132,7 @@ client.once("ready", async () => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.user.id !== YOUR_ID) return;
 
-  // Slash command: /panel
+  // Slash command
   if (interaction.isChatInputCommand()) {
     if (interaction.commandName === "panel") {
       await fetchGintama();
@@ -126,8 +146,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  // Button refresh
+  // Buttons
   if (interaction.isButton()) {
+
     if (interaction.customId === "refresh") {
       await fetchGintama();
 
@@ -136,7 +157,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.update({
         components: [buildContainer(data)],
         flags: MessageFlags.IsComponentsV2
-        });
+      });
+    }
+
+    if (interaction.customId === "reset_today") {
+      const data = resetTodayCounter();
+
+      await interaction.update({
+        components: [buildContainer(data)],
+        flags: MessageFlags.IsComponentsV2
+      });
     }
   }
 });
