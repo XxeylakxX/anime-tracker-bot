@@ -132,13 +132,10 @@ client.once("ready", async () => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.user.id !== YOUR_ID) return;
 
-  // Slash command
   if (interaction.isChatInputCommand()) {
     if (interaction.commandName === "panel") {
       await fetchGintama();
-
       const data = updateWatchCounter(gintamaEpisode);
-
       await interaction.reply({
         components: [buildContainer(data)],
         flags: MessageFlags.IsComponentsV2
@@ -146,14 +143,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  // Buttons
   if (interaction.isButton()) {
-
     if (interaction.customId === "refresh") {
       await fetchGintama();
-
       const data = updateWatchCounter(gintamaEpisode);
-
       await interaction.update({
         components: [buildContainer(data)],
         flags: MessageFlags.IsComponentsV2
@@ -162,25 +155,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.customId === "reset_today") {
       const data = resetTodayCounter();
-
       await interaction.update({
-        components: [buildContainer(data)],
+        components: [buildContainer(data)],  // ✅ no getServerStatus
         flags: MessageFlags.IsComponentsV2
       });
     }
+    // ✅ No duplicate block below this
   }
-
-  // Reset Button
-  if (interaction.customId === "reset_today") {
-  const data = resetTodayCounter();
-
-  const status = await getServerStatus(); // if you added status
-
-  await interaction.update({
-    components: [buildContainer(data, status)],
-    flags: MessageFlags.IsComponentsV2
-  });
-}
 });
 
 // Date Function
