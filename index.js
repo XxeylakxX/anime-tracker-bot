@@ -169,6 +169,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
   }
+
+  // Reset Button
+  if (interaction.customId === "reset_today") {
+  const data = resetTodayCounter();
+
+  const status = await getServerStatus(); // if you added status
+
+  await interaction.update({
+    components: [buildContainer(data, status)],
+    flags: MessageFlags.IsComponentsV2
+  });
+}
 });
 
 // Date Function
