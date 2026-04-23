@@ -86,6 +86,27 @@ function resetTodayCounter() {
   return data;
 }
 
+// WATCH COUNTER
+function updateWatchCounter(newEpisode) {
+  const data = loadData();
+  const today = new Date().toISOString().split("T")[0];
+
+  if (data.date !== today) {
+    data.date = today;
+    data.lastEpisode = newEpisode;
+    data.watchedToday = 0;
+  }
+
+  if (newEpisode > data.lastEpisode) {
+    data.watchedToday += (newEpisode - data.lastEpisode);
+    data.lastWatched = new Date().toISOString(); // ✅ save timestamp
+  }
+
+  data.lastEpisode = newEpisode;
+  saveData(data);
+  return data;
+}
+
 // 🧱 Build UI with ContainerBuilder
 function buildContainer(data) {
   return new ContainerBuilder()
@@ -107,6 +128,10 @@ function buildContainer(data) {
         t.setContent(
           `📊 Watched Today: **${data.watchedToday} episode(s)**`
         )
+    )
+
+    .addTextDisplayComponents(
+      (t) => t.setContent(`🕒 Last Watched: **${lastWatched}**`) // ✅ new line
     )
 
     .addActionRowComponents((row) =>
