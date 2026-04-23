@@ -1,8 +1,6 @@
 require("dotenv").config();
 const {
   ContainerBuilder,
-  TextDisplayBuilder,
-  ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   MessageFlags,
@@ -12,14 +10,17 @@ const {
 } = require("discord.js");
 
 const axios = require("axios");
+const fs = require("fs");
 
 const ANILIST_USERNAME = process.env.ANILIST_USERNAME;
 const YOUR_ID = process.env.YOUR_ID;
+const DATA_FILE = "./data.json";
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
+// Keep-alive server
 const express = require("express");
 const app = express();
 
@@ -71,22 +72,25 @@ async function fetchGintama() {
   }
 }
 
-// RESET 
-function resetTodayCounter() {
-  const data = loadData();
+// 💾 Data helpers
+function loadData() {
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({
+      date: "",
+      lastEpisode: 0,
+      watchedToday: 0,
+      lastWatched: null
+    }, null, 2));
+  }
 
-  const today = new Date().toISOString().split("T")[0];
-
-  data.date = today;
-  data.watchedToday = 0;
-
-  // DO NOT reset lastEpisode (important)
-  saveData(data);
-
-  return data;
+  return JSON.parse(fs.readFileSync(DATA_FILE));
 }
 
-// WATCH COUNTER
+function saveData(data) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+}
+
+// 🔄 Update watch counter
 function updateWatchCounter(newEpisode) {
   const data = loadData();
   const today = new Date().toISOString().split("T")[0];
@@ -99,7 +103,7 @@ function updateWatchCounter(newEpisode) {
 
   if (newEpisode > data.lastEpisode) {
     data.watchedToday += (newEpisode - data.lastEpisode);
-    data.lastWatched = new Date().toISOString(); // ✅ save timestamp
+    data.lastWatched = new Date().toISOString();
   }
 
   data.lastEpisode = newEpisode;
@@ -107,31 +111,43 @@ function updateWatchCounter(newEpisode) {
   return data;
 }
 
-// 🧱 Build UI with ContainerBuilder
+// 🧹 Reset today's counter
+function resetTodayCounter() {
+  const data = loadData();
+  const today = new Date().toISOString().split("T")[0];
+
+  data.date = today;
+  data.watchedToday = 0;
+  // DO NOT reset lastEpisode or lastWatched
+
+  saveData(data);
+  return data;
+}
+
+// 🧱 Build UI
 function buildContainer(data) {
+  const lastWatched = data.lastWatched
+    ? new Date(data.lastWatched).toLocaleString("en-PH", {
+        timeZone: "Asia/Manila",
+        dateStyle: "medium",
+        timeStyle: "short"
+      })
+    : "Never";
+
   return new ContainerBuilder()
     .setAccentColor(0xffcc00)
 
     .addTextDisplayComponents(
       (t) => t.setContent("🎌 **Gintama Tracker**")
     )
-
     .addTextDisplayComponents(
-      (t) =>
-        t.setContent(
-          `📺 Episode: **${gintamaEpisode}/${gintamaTotal}**`
-        )
+      (t) => t.setContent(`📺 Episode: **${gintamaEpisode}/${gintamaTotal}**`)
     )
-
     .addTextDisplayComponents(
-      (t) =>
-        t.setContent(
-          `📊 Watched Today: **${data.watchedToday} episode(s)**`
-        )
+      (t) => t.setContent(`📊 Watched Today: **${data.watchedToday} episode(s)**`)
     )
-
     .addTextDisplayComponents(
-      (t) => t.setContent(`🕒 Last Watched: **${lastWatched}**`) // ✅ new line
+      (t) => t.setContent(`🕒 Last Watched: **${lastWatched}**`)
     )
 
     .addActionRowComponents((row) =>
@@ -149,6 +165,7 @@ function buildContainer(data) {
     );
 }
 
+// ✅ Bot ready
 client.once("ready", async () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -181,56 +198,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.customId === "reset_today") {
       const data = resetTodayCounter();
       await interaction.update({
-        components: [buildContainer(data)],  // ✅ no getServerStatus
+        components: [buildContainer(data)],
         flags: MessageFlags.IsComponentsV2
       });
     }
-    // ✅ No duplicate block below this
   }
 });
-
-// Date Function
-const fs = require("fs");
-
-const DATA_FILE = "./data.json";
-
-function loadData() {
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({
-      date: "",
-      lastEpisode: 0,
-      watchedToday: 0
-    }, null, 2));
-  }
-
-  return JSON.parse(fs.readFileSync(DATA_FILE));
-}
-
-function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
-
-function updateWatchCounter(newEpisode) {
-  const data = loadData();
-
-  const today = new Date().toISOString().split("T")[0];
-
-  // reset if new day
-  if (data.date !== today) {
-    data.date = today;
-    data.lastEpisode = newEpisode;
-    data.watchedToday = 0;
-  }
-
-  // calculate progress difference
-  if (newEpisode > data.lastEpisode) {
-    data.watchedToday += (newEpisode - data.lastEpisode);
-  }
-
-  data.lastEpisode = newEpisode;
-
-  saveData(data);
-  return data;
-}
 
 client.login(process.env.DISCORD_TOKEN);
